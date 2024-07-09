@@ -5,30 +5,129 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Optimiertes Flappy Bird</title>
     <style>
-        body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f0f0; font-family: Arial, sans-serif; }
-        #gameContainer { position: relative; width: 1000px; height: 800px; }
-        canvas { border: 2px solid #000; border-radius: 10px; }
-        button { position: absolute; left: 50%; transform: translateX(-50%); padding: 15px 30px; font-size: 24px; cursor: pointer; background-color: #4CAF50; color: white; border: none; border-radius: 5px; transition: all 0.3s; }
-        button:hover { background-color: #45a049; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
-        #startButton { bottom: 150px; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            background-color: #121212; 
+            font-family: Arial, sans-serif; 
+            color: #e0e0e0;
+        }
+        #gameContainer { 
+            position: relative; 
+            width: 1000px; 
+            height: 800px; 
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+        canvas { 
+            border: 2px solid #333; 
+            border-radius: 10px; 
+        }
+        .button { 
+            padding: 15px 30px; 
+            font-size: 24px; 
+            cursor: pointer; 
+            background-color: #4CAF50; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            transition: all 0.3s; 
+        }
+        .button:hover { 
+            background-color: #45a049; 
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); 
+        }
+        #startButton, #skinButton, #restartButton { 
+            position: absolute; 
+            left: 50%; 
+            transform: translateX(-50%); 
+        }
+        #startButton { bottom: 250px; }
+        #skinButton { bottom: 150px; }
         #restartButton { bottom: 80px; display: none; }
+        #skinMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        .skinOption {
+            margin: 10px;
+            padding: 10px;
+            background-color: #333;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .skinOption:hover {
+            background-color: #555;
+        }
+        #closeSkinMenu {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        #dayNightToggle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div id="gameContainer">
         <canvas id="gameCanvas" width="1000" height="800"></canvas>
-        <button id="startButton">Start</button>
-        <button id="restartButton">Neustart</button>
+        <button id="startButton" class="button">Start</button>
+        <button id="skinButton" class="button">Vogel-Skin ändern</button>
+        <button id="restartButton" class="button">Neustart</button>
+        <div id="skinMenu">
+            <button class="skinOption" data-color="#f9ed69,#f08a5d,#b83b5e" data-shape="circle">Gelb (Kreis)</button>
+            <button class="skinOption" data-color="#ff6b6b,#4ecdc4,#45b7d1" data-shape="square">Rot (Quadrat)</button>
+            <button class="skinOption" data-color="#6ab04c,#badc58,#ff7979" data-shape="triangle">Grün (Dreieck)</button>
+            <button id="closeSkinMenu">✖</button>
+        </div>
+        <button id="dayNightToggle">☀️ / 🌙</button>
     </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const startButton = document.getElementById('startButton');
+        const skinButton = document.getElementById('skinButton');
         const restartButton = document.getElementById('restartButton');
+        const skinMenu = document.getElementById('skinMenu');
+        const closeSkinMenu = document.getElementById('closeSkinMenu');
+        const dayNightToggle = document.getElementById('dayNightToggle');
 
         const GAME_STATE = { MENU: 0, PLAYING: 1, GAME_OVER: 2 };
         let gameState = GAME_STATE.MENU;
-        let bird = { x: 200, y: 400, velocity: 0, radius: 25 };
+        let bird = { 
+            x: 200, 
+            y: 400, 
+            velocity: 0, 
+            radius: 25, 
+            rotation: 0,
+            colors: ["#f9ed69", "#f08a5d", "#b83b5e"],
+            shape: "circle"
+        };
         const GRAVITY = 0.25;
         const JUMP = -6;
         const MAX_VELOCITY = 6;
@@ -38,24 +137,43 @@
         let score = 0;
         let highScore = 0;
         let backgroundOffset = 0;
-        const GAME_SPEED = 3; // Geschwindigkeit des Spiels (und des Bodens)
+        const GAME_SPEED = 3;
+        let isNightMode = true;
 
-        // Boden erstellen
+        const STAR_COUNT = 100;
+        let stars = [];
+        let clouds = [];
+
+        for (let i = 0; i < STAR_COUNT; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * (canvas.height - 100),
+                size: Math.random() * 2
+            });
+        }
+
+        for (let i = 0; i < 5; i++) {
+            clouds.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * (canvas.height / 2),
+                width: Math.random() * 100 + 50,
+                height: Math.random() * 50 + 25
+            });
+        }
+
         const groundCanvas = document.createElement('canvas');
         const groundCtx = groundCanvas.getContext('2d');
-        groundCanvas.width = canvas.width * 2; // Verdoppeln der Breite für nahtloses Scrollen
+        groundCanvas.width = canvas.width * 2;
         groundCanvas.height = 100;
 
         function createGround() {
-            // Boden Grundfarbe
             const gradient = groundCtx.createLinearGradient(0, 0, 0, groundCanvas.height);
-            gradient.addColorStop(0, "#8B4513");
-            gradient.addColorStop(1, "#654321");
+            gradient.addColorStop(0, "#4a3f35");
+            gradient.addColorStop(1, "#2c2416");
             groundCtx.fillStyle = gradient;
             groundCtx.fillRect(0, 0, groundCanvas.width, groundCanvas.height);
 
-            // Erde-Textur
-            groundCtx.fillStyle = "rgba(139, 69, 19, 0.5)";
+            groundCtx.fillStyle = "rgba(74, 63, 53, 0.5)";
             for (let i = 0; i < groundCanvas.width; i += 4) {
                 for (let j = 0; j < groundCanvas.height; j += 4) {
                     if (Math.random() > 0.5) {
@@ -64,18 +182,16 @@
                 }
             }
 
-            // Gras
             for (let i = 0; i < groundCanvas.width; i += 2) {
                 const height = Math.random() * 15 + 5;
-                const hue = Math.random() * 20 + 100; // Variiere die Grüntöne
-                groundCtx.strokeStyle = `hsl(${hue}, 100%, 30%)`;
+                const hue = Math.random() * 20 + 100;
+                groundCtx.strokeStyle = `hsl(${hue}, 70%, 20%)`;
                 groundCtx.beginPath();
                 groundCtx.moveTo(i, groundCanvas.height);
                 groundCtx.lineTo(i, groundCanvas.height - height);
                 groundCtx.stroke();
             }
 
-            // Steine
             for (let i = 0; i < 40; i++) {
                 drawStone(
                     Math.random() * groundCanvas.width,
@@ -86,13 +202,12 @@
         }
 
         function drawStone(x, y, size) {
-            groundCtx.fillStyle = "#808080";
+            groundCtx.fillStyle = "#555";
             groundCtx.beginPath();
             groundCtx.ellipse(x, y, size, size / 2, 0, 0, Math.PI * 2);
             groundCtx.fill();
 
-            // Highlight für 3D-Effekt
-            groundCtx.strokeStyle = "#A9A9A9";
+            groundCtx.strokeStyle = "#777";
             groundCtx.lineWidth = 2;
             groundCtx.beginPath();
             groundCtx.moveTo(x - size / 2, y);
@@ -102,14 +217,78 @@
 
         createGround();
 
+        function updateButtonVisibility() {
+            switch (gameState) {
+                case GAME_STATE.MENU:
+                    startButton.style.display = 'block';
+                    skinButton.style.display = 'block';
+                    restartButton.style.display = 'none';
+                    break;
+                case GAME_STATE.PLAYING:
+                    startButton.style.display = 'none';
+                    skinButton.style.display = 'none';
+                    restartButton.style.display = 'none';
+                    break;
+                case GAME_STATE.GAME_OVER:
+                    startButton.style.display = 'none';
+                    skinButton.style.display = 'none';
+                    restartButton.style.display = 'block';
+                    break;
+            }
+        }
+
+        function resetGame() {
+            bird.y = 400;
+            bird.velocity = 0;
+            bird.rotation = 0;
+            pipes = [];
+            score = 0;
+        }
+
+        function startGame() {
+            resetGame();
+            gameState = GAME_STATE.PLAYING;
+            updateButtonVisibility();
+        }
+
+        function gameOver() {
+            gameState = GAME_STATE.GAME_OVER;
+            if (score > highScore) {
+                highScore = score;
+            }
+            updateButtonVisibility();
+        }
+
+        function returnToMenu() {
+            gameState = GAME_STATE.MENU;
+            updateButtonVisibility();
+        }
+
         function update() {
             if (gameState !== GAME_STATE.PLAYING) return;
 
             backgroundOffset = (backgroundOffset + GAME_SPEED) % groundCanvas.width;
 
+            stars.forEach(star => {
+                star.x -= GAME_SPEED;
+                if (star.x < 0) {
+                    star.x = canvas.width;
+                    star.y = Math.random() * (canvas.height - 100);
+                }
+            });
+
+            clouds.forEach(cloud => {
+                cloud.x -= GAME_SPEED * 0.5;
+                if (cloud.x + cloud.width < 0) {
+                    cloud.x = canvas.width;
+                    cloud.y = Math.random() * (canvas.height / 2);
+                }
+            });
+
             bird.velocity += GRAVITY;
             bird.velocity = Math.min(bird.velocity, MAX_VELOCITY);
             bird.y += bird.velocity;
+            bird.rotation = Math.min(Math.PI / 4, Math.max(-Math.PI / 4, (bird.velocity * 0.2)));
 
             if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 350) {
                 pipes.push({
@@ -142,71 +321,74 @@
         }
 
         function draw() {
-            // Himmel
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, "#87CEEB");
-            gradient.addColorStop(1, "#E0F6FF");
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            if (isNightMode) {
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, "#1a1a2e");
+                gradient.addColorStop(1, "#16213e");
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Wolken
-            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-            for (let i = 0; i < 5; i++) {
-                drawCloud((i * 250 - backgroundOffset + canvas.width) % canvas.width, 100 + i * 60, 100 + i * 20);
+                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                stars.forEach(star => {
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            } else {
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, "#87CEEB");
+                gradient.addColorStop(1, "#E0F6FF");
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                clouds.forEach(cloud => {
+                    drawCloud(cloud.x, cloud.y, cloud.width, cloud.height);
+                });
             }
 
-            // Rohre
             pipes.forEach(pipe => {
                 drawPipe(pipe.x, 0, PIPE_WIDTH, pipe.height, true);
                 drawPipe(pipe.x, pipe.height + PIPE_GAP, PIPE_WIDTH, canvas.height - pipe.height - PIPE_GAP, false);
             });
 
-            // Boden (scrollend)
             ctx.drawImage(groundCanvas, -backgroundOffset, canvas.height - groundCanvas.height);
             ctx.drawImage(groundCanvas, -backgroundOffset + groundCanvas.width, canvas.height - groundCanvas.height);
 
-            // Vogel
             drawBird();
 
-            // Punktestand
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = 'white';
             ctx.font = 'bold 32px Arial';
             ctx.fillText(`Punkte: ${score}`, 20, 40);
 
             if (gameState === GAME_STATE.MENU) {
                 drawOverlay("Flappy Bird");
-            }
-
-            if (gameState === GAME_STATE.GAME_OVER) {
+            } else if (gameState === GAME_STATE.GAME_OVER) {
                 drawOverlay("Game Over", `Punktzahl: ${score}`, `Highscore: ${highScore}`);
             }
         }
-
-        function drawCloud(x, y, size) {
+function drawCloud(x, y, width, height) {
             ctx.beginPath();
-            ctx.arc(x, y, size / 2, Math.PI * 0.5, Math.PI * 1.5);
-            ctx.arc(x + size / 2, y - size / 4, size / 3, Math.PI * 1, Math.PI * 2);
-            ctx.arc(x + size, y, size / 2, Math.PI * 1.5, Math.PI * 0.5);
-            ctx.moveTo(x + size, y);
-            ctx.lineTo(x, y);
+            ctx.moveTo(x, y + height / 2);
+            ctx.bezierCurveTo(x + width / 4, y, x + width * 3 / 4, y, x + width, y + height / 2);
+            ctx.bezierCurveTo(x + width, y + height, x, y + height, x, y + height / 2);
             ctx.fill();
         }
 
         function drawPipe(x, y, width, height, isUpper) {
             const gradient = ctx.createLinearGradient(x, y, x + width, y);
-            gradient.addColorStop(0, "#0a0");
-            gradient.addColorStop(0.5, "#0f0");
-            gradient.addColorStop(1, "#0a0");
+            gradient.addColorStop(0, "#1e5128");
+            gradient.addColorStop(0.5, "#4e9f3d");
+            gradient.addColorStop(1, "#1e5128");
             
             ctx.fillStyle = gradient;
             ctx.fillRect(x, y, width, height);
             
-            ctx.strokeStyle = "#060";
+            ctx.strokeStyle = "#0b2f11";
             ctx.lineWidth = 2;
             ctx.strokeRect(x, y, width, height);
 
-            // Rohrkante
-            ctx.fillStyle = "#0c0";
+            ctx.fillStyle = "#3a7529";
             if (isUpper) {
                 ctx.fillRect(x - 5, height - 20, width + 10, 20);
                 ctx.strokeRect(x - 5, height - 20, width + 10, 20);
@@ -219,29 +401,44 @@
         function drawBird() {
             ctx.save();
             ctx.translate(bird.x, bird.y);
-            ctx.rotate(Math.min(bird.velocity * 0.1, Math.PI / 6));
+            ctx.rotate(bird.rotation);
             
-            // Körper
             const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bird.radius);
-            gradient.addColorStop(0, "#FFD700");
-            gradient.addColorStop(1, "#FFA500");
+            gradient.addColorStop(0, bird.colors[0]);
+            gradient.addColorStop(0.6, bird.colors[1]);
+            gradient.addColorStop(1, bird.colors[2]);
             ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
-            ctx.fill();
 
-            // Auge
+            if (bird.shape === "circle") {
+                ctx.beginPath();
+                ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (bird.shape === "square") {
+                ctx.fillRect(-bird.radius, -bird.radius, bird.radius * 2, bird.radius * 2);
+            } else if (bird.shape === "triangle") {
+                ctx.beginPath();
+                ctx.moveTo(0, -bird.radius);
+                ctx.lineTo(-bird.radius, bird.radius);
+                ctx.lineTo(bird.radius, bird.radius);
+                ctx.closePath();
+                ctx.fill();
+            }
+
             ctx.fillStyle = "white";
             ctx.beginPath();
             ctx.arc(bird.radius / 2, -bird.radius / 3, bird.radius / 4, 0, Math.PI * 2);
             ctx.fill();
-            ctx.fillStyle = "black";
+            ctx.fillStyle = "#333";
             ctx.beginPath();
             ctx.arc(bird.radius / 2 + 2, -bird.radius / 3, bird.radius / 8, 0, Math.PI * 2);
             ctx.fill();
 
-            // Schnabel
-            ctx.fillStyle = "orange";
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(bird.radius / 2 + 4, -bird.radius / 3 - 2, bird.radius / 16, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "#f08a5d";
             ctx.beginPath();
             ctx.moveTo(bird.radius, 0);
             ctx.lineTo(bird.radius + 15, -5);
@@ -253,7 +450,7 @@
         }
 
         function drawOverlay(title, subtitle1, subtitle2) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = 'white';
             ctx.font = 'bold 64px Arial';
@@ -267,27 +464,10 @@
             }
         }
 
-        function gameOver() {
-            gameState = GAME_STATE.GAME_OVER;
-            if (score > highScore) {
-                highScore = score;
-            }
-            restartButton.style.display = 'block';
-        }
-
         function gameLoop() {
             update();
             draw();
             requestAnimationFrame(gameLoop);
-        }
-
-        function resetGame() {
-            bird.y = 400;
-            bird.velocity = 0;
-            pipes = [];
-            score = 0;
-            gameState = GAME_STATE.PLAYING;
-            restartButton.style.display = 'none';
         }
 
         canvas.addEventListener('click', () => {
@@ -298,19 +478,47 @@
 
         startButton.addEventListener('click', () => {
             if (gameState === GAME_STATE.MENU) {
-                resetGame();
-                startButton.style.display = 'none';
+                startGame();
             }
         });
 
         restartButton.addEventListener('click', () => {
             if (gameState === GAME_STATE.GAME_OVER) {
-                resetGame();
+                startGame();
             }
         });
 
-        gameLoop();
+        skinButton.addEventListener('click', () => {
+            if (gameState === GAME_STATE.MENU) {
+                skinMenu.style.display = 'block';
+            }
+        });
+
+        closeSkinMenu.addEventListener('click', () => {
+            skinMenu.style.display = 'none';
+        });
+
+        document.querySelectorAll('.skinOption').forEach(option => {
+            option.addEventListener('click', (e) => {
+                const colors = e.target.getAttribute('data-color').split(',');
+                const shape = e.target.getAttribute('data-shape');
+                bird.colors = colors;
+                bird.shape = shape;
+                skinMenu.style.display = 'none';
+            });
+        });
+
+        dayNightToggle.addEventListener('click', () => {
+            isNightMode = !isNightMode;
+            dayNightToggle.textContent = isNightMode ? "☀️" : "🌙";
+        });
+
+        function init() {
+            returnToMenu();
+            gameLoop();
+        }
+
+        init();
     </script>
 </body>
 </html>
-
