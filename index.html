@@ -9,8 +9,9 @@
             margin: 0; 
             padding: 0; 
             display: flex; 
-            justify-content: center; 
+            flex-direction: column;
             align-items: center; 
+            justify-content: center; 
             height: 100vh; 
             background-color: #121212; 
             font-family: Arial, sans-serif; 
@@ -40,23 +41,23 @@
             background-color: #45a049; 
             box-shadow: 0 0 15px rgba(76, 175, 80, 0.5); 
         }
-        #startButton, #skinButton, #restartButton { 
+        #startButton, #restartButton { 
             position: absolute; 
             left: 50%; 
             transform: translateX(-50%); 
         }
         #startButton { bottom: 250px; }
-        #skinButton { bottom: 150px; }
         #restartButton { bottom: 80px; display: none; }
+        #controlsContainer {
+            display: flex;
+            justify-content: space-between;
+            width: 1000px;
+            margin-bottom: 20px;
+        }
         #skinMenu {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             background-color: rgba(0, 0, 0, 0.8);
             padding: 20px;
             border-radius: 10px;
-            display: none;
         }
         .skinOption {
             margin: 10px;
@@ -70,20 +71,7 @@
         .skinOption:hover {
             background-color: #555;
         }
-        #closeSkinMenu {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-        }
         #dayNightToggle {
-            position: absolute;
-            top: 10px;
-            left: 10px;
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -94,27 +82,25 @@
     </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="1000" height="800"></canvas>
-        <button id="startButton" class="button">Start</button>
-        <button id="skinButton" class="button">Vogel-Skin ändern</button>
-        <button id="restartButton" class="button">Neustart</button>
+    <div id="controlsContainer">
         <div id="skinMenu">
             <button class="skinOption" data-color="#f9ed69,#f08a5d,#b83b5e" data-shape="circle">Gelb (Kreis)</button>
             <button class="skinOption" data-color="#ff6b6b,#4ecdc4,#45b7d1" data-shape="square">Rot (Quadrat)</button>
             <button class="skinOption" data-color="#6ab04c,#badc58,#ff7979" data-shape="triangle">Grün (Dreieck)</button>
-            <button id="closeSkinMenu">✖</button>
         </div>
         <button id="dayNightToggle">☀️ / 🌙</button>
+    </div>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1000" height="800"></canvas>
+        <button id="startButton" class="button">Start</button>
+        <button id="restartButton" class="button">Neustart</button>
     </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const startButton = document.getElementById('startButton');
-        const skinButton = document.getElementById('skinButton');
         const restartButton = document.getElementById('restartButton');
         const skinMenu = document.getElementById('skinMenu');
-        const closeSkinMenu = document.getElementById('closeSkinMenu');
         const dayNightToggle = document.getElementById('dayNightToggle');
 
         const GAME_STATE = { MENU: 0, PLAYING: 1, GAME_OVER: 2 };
@@ -221,17 +207,14 @@
             switch (gameState) {
                 case GAME_STATE.MENU:
                     startButton.style.display = 'block';
-                    skinButton.style.display = 'block';
                     restartButton.style.display = 'none';
                     break;
                 case GAME_STATE.PLAYING:
                     startButton.style.display = 'none';
-                    skinButton.style.display = 'none';
                     restartButton.style.display = 'none';
                     break;
                 case GAME_STATE.GAME_OVER:
                     startButton.style.display = 'none';
-                    skinButton.style.display = 'none';
                     restartButton.style.display = 'block';
                     break;
             }
@@ -367,7 +350,8 @@
                 drawOverlay("Game Over", `Punktzahl: ${score}`, `Highscore: ${highScore}`);
             }
         }
-function drawCloud(x, y, width, height) {
+
+        function drawCloud(x, y, width, height) {
             ctx.beginPath();
             ctx.moveTo(x, y + height / 2);
             ctx.bezierCurveTo(x + width / 4, y, x + width * 3 / 4, y, x + width, y + height / 2);
@@ -488,23 +472,12 @@ function drawCloud(x, y, width, height) {
             }
         });
 
-        skinButton.addEventListener('click', () => {
-            if (gameState === GAME_STATE.MENU) {
-                skinMenu.style.display = 'block';
-            }
-        });
-
-        closeSkinMenu.addEventListener('click', () => {
-            skinMenu.style.display = 'none';
-        });
-
         document.querySelectorAll('.skinOption').forEach(option => {
             option.addEventListener('click', (e) => {
                 const colors = e.target.getAttribute('data-color').split(',');
                 const shape = e.target.getAttribute('data-shape');
                 bird.colors = colors;
                 bird.shape = shape;
-                skinMenu.style.display = 'none';
             });
         });
 
