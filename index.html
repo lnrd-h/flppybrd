@@ -92,7 +92,7 @@
         <div id="skinMenu">
             <button class="skinOption" data-color="#f9ed69,#f08a5d,#b83b5e" data-shape="circle">Gelb (Kreis)</button>
             <button class="skinOption" data-color="#ff6b6b,#4ecdc4,#45b7d1" data-shape="square">Rot (Quadrat)</button>
-            <button class="skinOption" data-color="#6ab04c,#badc58,#ff7979" data-shape="triangle">Grün (Dreieck)</button>
+            <button class="skinOption" data-color="omer" data-shape="image" data-image="test.png">Omer</button>
         </div>
         <button id="dayNightToggle">☀️ / 🌙</button>
     </div>
@@ -108,6 +108,15 @@
         const restartButton = document.getElementById('restartButton');
         const skinMenu = document.getElementById('skinMenu');
         const dayNightToggle = document.getElementById('dayNightToggle');
+        const omerImage = new Image();
+        omerImage.src = 'test.png';
+        omerImage.onload = function() {
+            console.log('Omer image loaded successfully');
+            console.log('Image size:', omerImage.width, 'x', omerImage.height);
+        };
+        omerImage.onerror = function() {
+            console.error('Error loading Omer image');
+        };
 
         const GAME_STATE = { MENU: 0, PLAYING: 1, GAME_OVER: 2 };
         let gameState = GAME_STATE.MENU;
@@ -255,6 +264,7 @@
 
         let lastTimestamp = 0;
         function update(timestamp) {
+            console.log('Update called, game state:', gameState);
             if (gameState !== GAME_STATE.PLAYING) return;
             
             if (!lastTimestamp) lastTimestamp = timestamp;
@@ -317,6 +327,7 @@
         }
 
         function draw() {
+            console.log('Draw called, bird shape:', bird.shape);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (isNightMode) {
@@ -402,48 +413,55 @@
             ctx.translate(bird.x, bird.y);
             ctx.rotate(bird.rotation);
             
-            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bird.radius);
-            gradient.addColorStop(0, bird.colors[0]);
-            gradient.addColorStop(0.6, bird.colors[1]);
-            gradient.addColorStop(1, bird.colors[2]);
-            ctx.fillStyle = gradient;
+            if (bird.shape === "omer") {
+                // Vergrößern Sie das Bild auf das 1.5-fache der Vogelgröße
+                const imageSize = bird.radius * 5;
+                ctx.drawImage(omerImage, -imageSize / 2, -imageSize / 2, imageSize, imageSize);
+            } else {
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, bird.radius);
+                gradient.addColorStop(0, bird.colors[0]);
+                gradient.addColorStop(0.6, bird.colors[1]);
+                gradient.addColorStop(1, bird.colors[2]);
+                ctx.fillStyle = gradient;
 
-            if (bird.shape === "circle") {
+                if (bird.shape === "circle") {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (bird.shape === "square") {
+                    ctx.fillRect(-bird.radius, -bird.radius, bird.radius * 2, bird.radius * 2);
+                } else if (bird.shape === "triangle") {
+                    ctx.beginPath();
+                    ctx.moveTo(0, -bird.radius);
+                    ctx.lineTo(-bird.radius, bird.radius);
+                    ctx.lineTo(bird.radius, bird.radius);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+
+                // Zeichne das Auge und den Schnabel nur für die nicht-Omer Skins
+                ctx.fillStyle = "white";
                 ctx.beginPath();
-                ctx.arc(0, 0, bird.radius, 0, Math.PI * 2);
+                ctx.arc(bird.radius / 2, -bird.radius / 3, bird.radius / 4, 0, Math.PI * 2);
                 ctx.fill();
-            } else if (bird.shape === "square") {
-                ctx.fillRect(-bird.radius, -bird.radius, bird.radius * 2, bird.radius * 2);
-            } else if (bird.shape === "triangle") {
+                ctx.fillStyle = "#333";
                 ctx.beginPath();
-                ctx.moveTo(0, -bird.radius);
-                ctx.lineTo(-bird.radius, bird.radius);
-                ctx.lineTo(bird.radius, bird.radius);
+                ctx.arc(bird.radius / 2 + 2, -bird.radius / 3, bird.radius / 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.arc(bird.radius / 2 + 4, -bird.radius / 3 - 2, bird.radius / 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "#f08a5d";
+                ctx.beginPath();
+                ctx.moveTo(bird.radius, 0);
+                ctx.lineTo(bird.radius + 15, -5);
+                ctx.lineTo(bird.radius + 15, 5);
                 ctx.closePath();
                 ctx.fill();
             }
-
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.arc(bird.radius / 2, -bird.radius / 3, bird.radius / 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = "#333";
-            ctx.beginPath();
-            ctx.arc(bird.radius / 2 + 2, -bird.radius / 3, bird.radius / 8, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.arc(bird.radius / 2 + 4, -bird.radius / 3 - 2, bird.radius / 16, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = "#f08a5d";
-            ctx.beginPath();
-            ctx.moveTo(bird.radius, 0);
-            ctx.lineTo(bird.radius + 15, -5);
-            ctx.lineTo(bird.radius + 15, 5);
-            ctx.closePath();
-            ctx.fill();
 
             ctx.restore();
         }
@@ -472,6 +490,22 @@
         canvas.addEventListener('click', () => {
             if (gameState === GAME_STATE.PLAYING) {
                 bird.velocity = JUMP;
+            } else if (gameState === GAME_STATE.MENU) {
+                startGame();
+            } else if (gameState === GAME_STATE.GAME_OVER) {
+                startGame();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                if (gameState === GAME_STATE.MENU) {
+                    startGame();
+                } else if (gameState === GAME_STATE.PLAYING) {
+                    bird.velocity = JUMP;
+                } else if (gameState === GAME_STATE.GAME_OVER) {
+                    startGame();
+                }
             }
         });
 
@@ -489,10 +523,17 @@
 
         document.querySelectorAll('.skinOption').forEach(option => {
             option.addEventListener('click', (e) => {
-                const colors = e.target.getAttribute('data-color').split(',');
+                const colors = e.target.getAttribute('data-color');
                 const shape = e.target.getAttribute('data-shape');
-                bird.colors = colors;
-                bird.shape = shape;
+                const image = e.target.getAttribute('data-image');
+                if (colors === "omer") {
+                    bird.shape = 'omer';
+                    console.log('Omer skin selected');
+                } else {
+                    bird.colors = colors.split(',');
+                    bird.shape = shape;
+                }
+                console.log('Selected skin:', bird.shape);
             });
         });
 
@@ -506,7 +547,13 @@
             requestAnimationFrame(gameLoop);
         }
 
+        function testDrawImage() {
+            ctx.drawImage(omerImage, 0, 0, 100, 100);
+            console.log('Test image drawn');
+        }
+
         init();
+        testDrawImage();
     </script>
 </body>
 </html>
